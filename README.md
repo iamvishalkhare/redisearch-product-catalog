@@ -56,7 +56,7 @@ Clone the repository from GitHub:
 
 ```bash
 $ git clone https://github.com/redis-developer/redis-om-python-flask-skeleton-app.git
-$ cd redis-om-python-flask-skeleton-app
+$ cd redisearch-product-catalog
 ```
 
 ### Start a Redis Stack Database, or Configure your Redis Enterprise Cloud Credentials

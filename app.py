@@ -1,117 +1,101 @@
-import json
-from xml.dom import NotFoundErr
 from flask import Flask, request
-from pydantic import ValidationError
-from person import Person
 from redis_om import Migrator
-from redis_om.model import NotFoundError
+from managers import CustomerManager, SkusManager, SearchManager
 
 app = Flask(__name__)
 
-# Utility function to format list of People objects as 
+
+# Utility function to format list of objects as
 # a results dictionary, for easy conversion to JSON in 
 # API responses.
-def build_results(people):
-    response = []
-    for person in people:
-        response.append(person.dict())
+def build_results(response):
+    if isinstance(response, tuple):
+        response = {"results": response[0]}
+    else:
+        result = []
+        for customer in response:
+            result.append(customer.dict())
+        response = {"results": result}
+    return response
 
-    return { "results": response }
 
-# Create a new person.
-@app.route("/person/new", methods=["POST"])
-def create_person():
-    try:
-        print(request.json)
-        new_person = Person(**request.json)
-        new_person.save()
-        return new_person.pk
+# Register a new customer.
+@app.route("/customer/register", methods=["POST"])
+def register_client():
+    result = CustomerManager().register_customer(request.json)
+    return {"token": result}
 
-    except ValidationError as e:
-        print(e)
-        return "Bad request.", 400
 
-# Update a person's age.
-@app.route("/person/<id>/age/<int:new_age>", methods=["POST"])
-def update_age(id, new_age):
-    try:
-        person = Person.get(id)
+# Get customer details given customer's token
+@app.route("/customer/<token>", methods=["GET"])
+def get_customer(token):
+    result = CustomerManager().get_customer_details(token)
+    return build_results(result)
 
-    except NotFoundError:
-        return "Bad request", 400
-    
-    person.age = new_age
-    person.save()
-    return "ok"
 
-# Delete a person by ID.
-@app.route("/person/<id>/delete", methods=["POST"])
-def delete_person(id):
-    # Delete returns 1 if the person existed and was 
-    # deleted, or 0 if they didn't exist.  For our 
-    # purposes, both outcomes can be considered a success.
-    Person.delete(id)
-    return "ok"
+# Ingest customer's SKU data
+@app.route("/skus/ingest", methods=["POST"])
+def ingest_data():
+    result = SkusManager().ingest_sku_data(request.json)
+    return build_results(result)
 
-# Find a person by ID.
-@app.route("/person/byid/<id>", methods=["GET"])
-def find_by_id(id):
-    try:
-        person = Person.get(id)
-        return person.dict()
-    except NotFoundError:
-        return {}
 
-# Find people with a given first and last name.
-@app.route("/people/byname/<first_name>/<last_name>", methods=["GET"])
-def find_by_name(first_name, last_name):
-    people = Person.find(
-        (Person.first_name == first_name) &
-        (Person.last_name == last_name)
-    ).all()
+# Get SKU data of a customer.
+@app.route("/skus/<token>/<int:sku_id>", methods=["GET"])
+def get_sku_by_sku_id(token, sku_id):
+    result = SkusManager().get_sku_by_sku_id(token, sku_id)
+    return build_results(result)
 
-    return build_results(people)
 
-# Find people within a given age range, and return them sorted by age.
-@app.route("/people/byage/<int:min_age>/<int:max_age>", methods=["GET"])
-def find_in_age_range(min_age, max_age):
-    people = Person.find(
-        (Person.age >= min_age) &
-        (Person.age <= max_age)
-    ).sort_by("age").all()
+# Update SKU's discounted price
+@app.route("/skus/update_discounted_price", methods=["PATCH"])
+def update_sku_data():
+    result = SkusManager().update_skus_data(request.json)
+    return build_results(result)
 
-    return build_results(people)
 
-# Find people with a given skill in a given city.
-@app.route("/people/byskill/<desired_skill>/<city>", methods=["GET"])
-def find_matching_skill(desired_skill, city):
-    people = Person.find(
-        (Person.skills << desired_skill) &
-        (Person.address.city == city)
-    ).all()
+# Delete a SKU given customer's token
+@app.route("/skus/<token>/<int:sku_id>", methods=["DELETE"])
+def delete_sku_by_sku_id(token, sku_id):
+    result = SkusManager().delete_sku_by_sku_id(token, sku_id)
+    return build_results(result)
 
-    return build_results(people)
 
-# Find people whose personal statements contain a full text search match
-# for the supplied search term.
-@app.route("/people/bystatement/<search_term>", methods=["GET"])
-def find_matching_statements(search_term):
-    people = Person.find(Person.personal_statement % search_term).all()
+# Searches for a search term over fields which are marked True for full text search. (title & description)
+@app.route("/search/fts/<token>", methods=["GET"])
+def search_by_term(token):
+    result = SearchManager().search_by_term(token, request.args.get('q'))
+    return build_results(result)
 
-    return build_results(people)
 
-# Expire a person's record after a given number of seconds.
-@app.route("/person/<id>/expire/<int:seconds>", methods=["POST"])
-def expire_by_id(id, seconds):
-    # Get the full Redis key for the supplied ID.
-    try:
-        person_to_expire = Person.get(id)
-        Person.db().expire(person_to_expire.key(), seconds)
-    except NotFoundError:
-        pass
+# Return records whose discounted_price is in a given range
+@app.route("/search/discounted_price_range/<token>", methods=["GET"])
+def search_by_price_range(token):
+    result = SearchManager().search_by_price_range(token, request.args.get('min'), request.args.get('max'))
+    return build_results(result)
 
-    # Return OK whatever happens.
-    return "ok"
+
+# Return records either whose rating is more than min_rating or discounted_price is more than max_price.
+@app.route("/search/price_or_rating/<token>", methods=["GET"])
+def search_by_price_lt_or_rating_gt(token):
+    result = SearchManager().search_by_price_lt_or_rating_gt(token, request.args.get('min_rating'),
+                                                             request.args.get('max_price'))
+    return build_results(result)
+
+
+# Returns all records whose tags fields contains any tags passed as query param
+@app.route("/search/tags/<token>", methods=["GET"])
+def search_by_tag(token):
+    result = SearchManager().search_by_tag(token, request.args.to_dict(flat=False).get('tag[]'))
+    return build_results(result)
+
+
+# Expires a records given its sku_id in ttl seconds
+@app.route("/search/expire/<token>", methods=["POST"])
+def expire_sku_by_sku_id(token):
+    result = SearchManager().expire_sku_by_sku_id(token, request.json)
+    return build_results(result)
+
 
 @app.route("/", methods=["GET"])
 def home_page():
@@ -119,14 +103,15 @@ def home_page():
         <!DOCTYPE html>
         <html>
             <head>
-                <title>Redis OM Python / Flask Basic CRUD Demo</title>
+                <title>Redis OM Python for Redisearch using Flask</title>
             </head>
             <body>
                 <h1>Redis OM Python / Flask Basic CRUD Demo</h1>
-                <p><a href="https://github.com/redis-developer/redis-om-python-flask-skeleton-app">Read the documentation on GitHub</a>.</p>
+                <p><a href="https://github.com/iamvishalkhare/redisearch-product-catalog">Read the documentation on GitHub</a>.</p>
             </body>
         </html>
     """
 
-# Create a RediSearch index for instances of the Person model.
+
+# Create RediSearch indices for instances of the Customer & Skus models.
 Migrator().run()

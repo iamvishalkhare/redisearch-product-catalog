@@ -1,0 +1,6 @@
+{
+    "name": "Paytm",
+    "description": "Online payments super app",
+    "email": "info@paytm.com",
+    "client_tags": ["payments", "upi", "banking", "finance"]
+}

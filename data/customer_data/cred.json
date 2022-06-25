@@ -1,0 +1,6 @@
+{
+    "name": "Cred",
+    "description": "Credit card payments and rewards",
+    "email": "info@cred.com",
+    "client_tags": ["payments", "finance", "credit card", "rewards"]
+}
