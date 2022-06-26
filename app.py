@@ -1,12 +1,12 @@
 from flask import Flask, request
 from redis_om import Migrator
-from managers import CustomerManager, SkusManager, SearchManager
+from managers import CustomerManager, SkusManager, SearchManager, Dataloader
 
 app = Flask(__name__)
 
 
 # Utility function to format list of objects as
-# a results dictionary, for easy conversion to JSON in 
+# a result dictionary, for easy conversion to JSON in
 # API responses.
 def build_results(response):
     if isinstance(response, tuple):
@@ -17,6 +17,13 @@ def build_results(response):
             result.append(customer.dict())
         response = {"results": result}
     return response
+
+
+# Data loader endpoint to load sample data.
+@app.route("/dataloader", methods=["POST"])
+def dataloader():
+    Dataloader().dataloader()
+    return "Data ingested. See logs."
 
 
 # Register a new customer.
@@ -106,7 +113,7 @@ def home_page():
                 <title>Redis OM Python for Redisearch using Flask</title>
             </head>
             <body>
-                <h1>Redis OM Python / Flask Basic CRUD Demo</h1>
+                <h1>Redis OM Python for Redisearch using Flask</h1>
                 <p><a href="https://github.com/iamvishalkhare/redisearch-product-catalog">Read the documentation on GitHub</a>.</p>
             </body>
         </html>

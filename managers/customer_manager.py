@@ -1,5 +1,4 @@
 from typing import List, Union
-
 from models import Customer
 from pydantic import ValidationError
 
