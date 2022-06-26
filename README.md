@@ -17,7 +17,7 @@ This application deals with 2 entities/models-
     "name": "Name of the customer/company who wants to index their product catalog with us.",
     "description": "Description of customer/company",
     "email": "email of customer/company",
-    "client_tags": ["tag1", "tag2", ... , "tagN"]
+    "client_tags": ["tag1", "tag2", "tagN"]
 }
 ```
 
@@ -39,12 +39,10 @@ This application deals with 2 entities/models-
     "tags": [
       "tag1",
       "tag2",
-      ...,
       "tagN"
     ],
-    "title": "Title/Name of sku",
-  },
-  {...}
+    "title": "Title/Name of sku"
+  }
 ]
 ```
 
@@ -83,8 +81,6 @@ or if you're using Redis Enterprise Cloud, you'll need the hostname, port number
 $ export REDIS_OM_URL=redis://default:<password>@<host>:<port>
 ```
 
-(This step is not required when working with Docker as the Docker container runs Redis on `localhost` port `6379` with no password, which is the default connection that Redis OM uses.)
-
 For example if your Redis Enterprise Cloud database is at port `9139` on host `enterprise.redis.com` and your password is `5uper53cret` then you'd set `REDIS_OM_URL` as follows:
 
 ```bash
@@ -93,7 +89,7 @@ $ export REDIS_OM_URL=redis://default:5uper53cret@enterprise.redis.com:9139
 
 ### Create a Python Virtual Environment and Install the Dependencies
 
-Create a Python virtual environment, and install the project dependencies which are [Flask](https://pypi.org/project/Flask/), [Requests](https://pypi.org/project/requests/) (used only in the data loader script) and [Redis OM](https://pypi.org/project/redis-om/):
+Create a Python virtual environment, and install the project dependencies.
 
 ```bash
 $ python3 -m venv venv
@@ -224,7 +220,7 @@ return new_client.pk
 ```
 This function also ensures no 2 customers have same email ID.
 
-When a new Custoemr instance is created, Redis OM assigns it a unique ULID primary key, which we can access as `.pk`.  We return that to the caller, so that they know the ID of the object they just created.
+When a new Customer instance is created, Redis OM assigns it a unique ULID primary key, which we can access as `.pk`.  We return that to the caller, so that they know the ID of the object they just created.
 
 Persisting the object to Redis is then simply a matter of calling `.save()` on it.
 
